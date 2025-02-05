@@ -21,16 +21,22 @@ namespace Casper.Network.SDK.Converters
             reader.Read();
             if (named != "Named")
                 throw new JsonException("Named property expected");
-            
+
             reader.Read(); // Start array
 
             List<T> list = new List<T>();
 
-            if (reader.TokenType == JsonTokenType.EndObject ||
-                reader.TokenType == JsonTokenType.EndArray)
+            if (reader.TokenType == JsonTokenType.EndObject)
                 return list; //this is an empty list, just return...
 
-            var tConverter = Activator.CreateInstance(typeof(TConverter)) as JsonConverter;
+            if (reader.TokenType == JsonTokenType.EndArray)
+            {
+                //this is an empty list, skip end array item and return...
+                reader.Read();
+                return list;
+            }
+
+        var tConverter = Activator.CreateInstance(typeof(TConverter)) as JsonConverter;
 
             if (reader.TokenType is JsonTokenType.StartArray or JsonTokenType.StartObject or JsonTokenType.PropertyName)
             {

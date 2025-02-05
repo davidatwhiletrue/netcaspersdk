@@ -61,6 +61,25 @@ namespace Casper.Network.SDK.JsonRpc
         {
         }
     }
+    
+    public class GetAuctionInfoV2 : RpcMethod
+    {
+        /// <summary>
+        /// Returns the bids and validators at a given block.
+        /// </summary>
+        /// <param name="blockHash">Block hash for which the auction info is queried. Null for the most recent auction info.</param>
+        public GetAuctionInfoV2(string blockHash) : base("state_get_auction_info_v2", blockHash)
+        {
+        }
+
+        /// <summary>
+        /// Returns the bids and validators at a given block.
+        /// </summary>
+        /// <param name="height">Block height for which the auction info is queried.</param>
+        public GetAuctionInfoV2(ulong height) : base("state_get_auction_info_v2", height)
+        {
+        }
+    }
 
     public class GetAccountInfo : RpcMethod
     {

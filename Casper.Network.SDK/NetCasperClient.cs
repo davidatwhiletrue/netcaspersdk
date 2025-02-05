@@ -21,6 +21,8 @@ namespace Casper.Network.SDK
 
         private readonly RpcClient _rpcClient;
 
+        private int _nodeVersion;
+
         /// <summary>
         /// Create a new instance of the Casper client for a specific node in the network determined
         /// by the node address. Optionally, indicate a logging handler to log the requests and responses
@@ -44,6 +46,20 @@ namespace Casper.Network.SDK
             return _rpcClient.SendRpcRequestAsync<TRpcResult>(method);
         }
 
+        private async Task<int> GetNodeVersion()
+        {
+            if (_nodeVersion > 0)
+                return _nodeVersion;
+
+            var response = await this.GetNodeStatus();
+            var result = response.Parse();
+            _nodeVersion = result.BuildVersion.StartsWith("2")
+                    ? 2
+                    : 1;
+
+            return _nodeVersion;
+        }
+        
         /// <summary>
         /// Request the state root hash at a given Block.
         /// </summary>
@@ -93,8 +109,23 @@ namespace Casper.Network.SDK
         /// <returns></returns>
         public async Task<RpcResponse<GetAuctionInfoResult>> GetAuctionInfo(string blockHash = null)
         {
-            var method = new GetAuctionInfo(blockHash);
-            return await SendRpcRequestAsync<GetAuctionInfoResult>(method);
+            var nodeVersion = await GetNodeVersion();
+            RpcMethod method = null;
+            
+            if (nodeVersion == 1)
+                method = new GetAuctionInfo(blockHash);
+            else if (blockHash == null)
+                method = new GetAuctionInfoV2(blockHash);
+            else 
+            {
+                var getBlockResponse = await GetBlock(blockHash);
+                if (getBlockResponse.Parse().Block.Version == 2)
+                    method = new GetAuctionInfoV2(blockHash);
+                else
+                    method = new GetAuctionInfo(blockHash);
+            }
+            
+            return await SendRpcRequestAsync<GetAuctionInfoResult>(method);                
         }
 
         /// <summary>
@@ -103,8 +134,21 @@ namespace Casper.Network.SDK
         /// <param name="blockHeight">Block height for which the auction info is queried.</param>
         public async Task<RpcResponse<GetAuctionInfoResult>> GetAuctionInfo(ulong blockHeight)
         {
-            var method = new GetAuctionInfo(blockHeight);
-            return await SendRpcRequestAsync<GetAuctionInfoResult>(method);
+            var nodeVersion = await GetNodeVersion();
+            RpcMethod method = null;
+            
+            if (nodeVersion == 1)
+                method = new GetAuctionInfo(blockHeight);
+            else 
+            {
+                var getBlockResponse = await GetBlock(blockHeight);
+                if (getBlockResponse.Parse().Block.Version == 2)
+                    method = new GetAuctionInfoV2(blockHeight);
+                else
+                    method = new GetAuctionInfo(blockHeight);
+            }
+            
+            return await SendRpcRequestAsync<GetAuctionInfoResult>(method);   
         }
 
         /// <summary>
@@ -920,6 +964,17 @@ namespace Casper.Network.SDK
         {
             var uriBuilder = new UriBuilder("http", host, port, "metrics");
             return await GetNodeMetrics(uriBuilder.Uri.ToString());
+        }
+        
+        /// <summary>
+        /// Returns the validator bid.
+        /// </summary>
+        /// <param name="validator">The public key of the validator.</param>
+        /// <param name="blockHash">Hash of the block to retrieve the rewards from. Null for the most recent era</param>
+        public async Task<RpcResponse<QueryGlobalStateResult>> GetValidatorBid(PublicKey validator, string blockHash = null)
+        {
+            var bidAddr = BidAddrKey.FromValidatorKey(new AccountHashKey(validator));
+            return await QueryGlobalState(bidAddr, blockHash);
         }
         
         public void Dispose()

@@ -13,9 +13,9 @@ namespace Casper.Network.SDK.Types
         /// All bids contained within a vector.
         /// </summary>
         [JsonPropertyName("bids")]
-        [JsonConverter(typeof(BidsListConverter))]
-        public List<Bid> Bids { get; init; }
-
+        [JsonConverter(typeof(BidKindsListConverter))]
+        public List<BidKind> Bids { get; init; }
+        
         /// <summary>
         /// Block height.
         /// </summary>
